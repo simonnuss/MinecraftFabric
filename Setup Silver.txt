@@ -1,0 +1,62 @@
+#1
+.create table SilverDirect (
+    relay_eventRelayPosition_x: real,
+    relay_eventRelayPosition_y: real,
+    relay_eventRelayPosition_z: real,
+    relay_eventRelayRadius: int,
+    relay_eventRelayName: string,
+    cropBlock_lightLevel: int,
+    cropBlock_maxAge: int,
+    cropBlock_blockType: string,
+    cropBlock_isMature: bool,
+    cropBlock_position_x: real,
+    cropBlock_position_y: real,
+    cropBlock_position_z: real,
+    cropBlock_canGrow: bool,
+    cropBlock_age: int,
+    cropBlock_isFertilizable: bool,
+    eventHubProperties: string,
+    eventSentDatetimeUtc: datetime
+)
+
+#2
+.create function 
+with (docstring = 'Transforms table BronzeDirect to SilverDirect', folder='fnTFUG')
+fnBronzeToSilver()
+{
+	SilverDirect
+	| extend 
+		eventSentDatetimeEst = bin(datetime_utc_to_local(eventSentDatetimeUtc, "US/Eastern"), 1s),
+		cropBlockType = extract("minecraft:([^}]+)", 1, cropBlock_blockType)
+	| extend
+		cropBlockEmoji = case(
+			cropBlockType == "carrots", "🥕",
+			cropBlockType == "potatoes", "🥔",
+			cropBlockType == "wheat", "🌾",
+			cropBlockType == "beetroots", "🍅",
+			"" // Default case if none of the above conditions are met
+		)
+	| project 
+		['Event Datetime EST']      = eventSentDatetimeEst,
+		['Crop Block Type']         = cropBlockType,
+		['Crop Block Type Emoji']   = cropBlockEmoji,
+		['Crop Block Position X']   = cropBlock_position_x,
+		['Crop Block Position Y']   = cropBlock_position_y,
+		['Crop Block Position Z']   = cropBlock_position_z,
+		['Crop Block Age']          = cropBlock_age
+}
+
+#3
+.alter table SilverDirect policy update 
+```
+[
+  {
+    "IsEnabled": true,
+    "Source": "BronzeDirect",
+    "Query": "fnBronzeToSilver()",
+    "IsTransactional": true,
+    "PropagateIngestionProperties": false,
+    "ManagedIdentity": null
+  }
+]
+```

@@ -1,0 +1,55 @@
+
+#1
+.create table GoldDirect (
+    EventDatetimeEST: datetime,
+    CropBlockType: string,
+    CropBlockTypeEmoji: string,
+    CropBlockPositionX: real,
+    CropBlockPositionY: real,
+    CropBlockPositionZ: real,
+    CropBlockAge: int
+)
+
+
+
+#2
+.create function 
+with (docstring = 'Transforms table SilverDirect to GoldDirect', folder='fnTFUG')
+fnSilverToGold()
+{
+	SilverDirect
+	| extend 
+		eventSentDatetimeEst = bin(datetime_utc_to_local(eventSentDatetimeUtc, "US/Eastern"), 1s),
+		cropBlockType = extract("minecraft:([^}]+)", 1, cropBlock_blockType)
+	| extend
+		cropBlockEmoji = case(
+			cropBlockType == "carrots", "🥕",
+			cropBlockType == "potatoes", "🥔",
+			cropBlockType == "wheat", "🌾",
+			cropBlockType == "beetroots", "🍅",
+			"" // Default case if none of the above conditions are met
+		)
+	| project 
+		['Event Datetime EST']      = eventSentDatetimeEst,
+		['Crop Block Type']         = cropBlockType,
+		['Crop Block Type Emoji']   = cropBlockEmoji,
+		['Crop Block Position X']   = cropBlock_position_x,
+		['Crop Block Position Y']   = cropBlock_position_y,
+		['Crop Block Position Z']   = cropBlock_position_z,
+		['Crop Block Age']          = cropBlock_age
+}
+
+#3
+.alter table GoldDirect policy update 
+```
+[
+  {
+    "IsEnabled": true,
+    "Source": "SilverDirect",
+    "Query": "fnSilverToGold()",
+    "IsTransactional": true,
+    "PropagateIngestionProperties": false,
+    "ManagedIdentity": null
+  }
+]
+```

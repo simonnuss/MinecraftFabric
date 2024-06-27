@@ -1,0 +1,10 @@
+
+
+
+.clear table BronzeDirect data
+.clear table SilverDirect data
+.clear table GoldDirect data
+
+
+
+
